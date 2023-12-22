@@ -16,4 +16,3 @@ exports.ConfirmModal = function (_a) {
                 React.createElement(alert_dialog_1.AlertDialogCancel, null, "Cancel"),
                 React.createElement(alert_dialog_1.AlertDialogAction, { onClick: onConfirm }, "Continue")))));
 };
-v;
