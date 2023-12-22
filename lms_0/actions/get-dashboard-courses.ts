@@ -1,37 +1,58 @@
+import { Category, Chapter, Course } from "@prisma/client";
+
 import { db } from "@/lib/db";
+import { getProgress } from "@/actions/get-progress";
 
-export const getProgress = async (
-  userId: string,
-  courseId: string,
-): Promise<number> => {
+type CourseWithProgressWithCategory = Course & {
+  category: Category;
+  chapters: Chapter[];
+  progress: number | null;
+};
+
+type DashboardCourses = {
+  completedCourses: CourseWithProgressWithCategory[];
+  coursesInProgress: CourseWithProgressWithCategory[];
+}
+
+export const getDashboardCourses = async (userId: string): Promise<DashboardCourses> => {
   try {
-    const publishedChapters = await db.chapter.findMany({
-      where: {
-        courseId: courseId,
-        isPublished: true,
-      },
-      select: {
-        id: true,
-      }
-    });
-
-    const publishedChapterIds = publishedChapters.map((chapter) => chapter.id);
-
-    const validCompletedChapters = await db.userProgress.count({
+    const purchasedCourses = await db.purchase.findMany({
       where: {
         userId: userId,
-        chapterId: {
-          in: publishedChapterIds,
-        },
-        isCompleted: true,
+      },
+      select: {
+        course: {
+          include: {
+            category: true,
+            chapters: {
+              where: {
+                isPublished: true,
+              }
+            }
+          }
+        }
       }
     });
 
-    const progressPercentage = (validCompletedChapters / publishedChapterIds.length) * 100;
+    const courses = purchasedCourses.map((purchase) => purchase.course) as CourseWithProgressWithCategory[];
 
-    return progressPercentage;
+    for (let course of courses) {
+      const progress = await getProgress(userId, course.id);
+      course["progress"] = progress;
+    }
+
+    const completedCourses = courses.filter((course) => course.progress === 100);
+    const coursesInProgress = courses.filter((course) => (course.progress ?? 0) < 100);
+
+    return {
+      completedCourses,
+      coursesInProgress,
+    }
   } catch (error) {
-    console.log("[GET_PROGRESS]", error);
-    return 0;
+    console.log("[GET_DASHBOARD_COURSES]", error);
+    return {
+      completedCourses: [],
+      coursesInProgress: [],
+    }
   }
 }

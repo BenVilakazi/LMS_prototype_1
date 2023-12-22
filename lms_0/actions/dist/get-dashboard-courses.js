@@ -36,44 +36,63 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
-exports.getProgress = void 0;
+exports.getDashboardCourses = void 0;
 var db_1 = require("@/lib/db");
-exports.getProgress = function (userId, courseId) { return __awaiter(void 0, void 0, Promise, function () {
-    var publishedChapters, publishedChapterIds, validCompletedChapters, progressPercentage, error_1;
+var get_progress_1 = require("@/actions/get-progress");
+exports.getDashboardCourses = function (userId) { return __awaiter(void 0, void 0, Promise, function () {
+    var purchasedCourses, courses, _i, courses_1, course, progress, completedCourses, coursesInProgress, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 3, , 4]);
-                return [4 /*yield*/, db_1.db.chapter.findMany({
+                _a.trys.push([0, 6, , 7]);
+                return [4 /*yield*/, db_1.db.purchase.findMany({
                         where: {
-                            courseId: courseId,
-                            isPublished: true
+                            userId: userId
                         },
                         select: {
-                            id: true
+                            course: {
+                                include: {
+                                    category: true,
+                                    chapters: {
+                                        where: {
+                                            isPublished: true
+                                        }
+                                    }
+                                }
+                            }
                         }
                     })];
             case 1:
-                publishedChapters = _a.sent();
-                publishedChapterIds = publishedChapters.map(function (chapter) { return chapter.id; });
-                return [4 /*yield*/, db_1.db.userProgress.count({
-                        where: {
-                            userId: userId,
-                            chapterId: {
-                                "in": publishedChapterIds
-                            },
-                            isCompleted: true
-                        }
-                    })];
+                purchasedCourses = _a.sent();
+                courses = purchasedCourses.map(function (purchase) { return purchase.course; });
+                _i = 0, courses_1 = courses;
+                _a.label = 2;
             case 2:
-                validCompletedChapters = _a.sent();
-                progressPercentage = (validCompletedChapters / publishedChapterIds.length) * 100;
-                return [2 /*return*/, progressPercentage];
+                if (!(_i < courses_1.length)) return [3 /*break*/, 5];
+                course = courses_1[_i];
+                return [4 /*yield*/, get_progress_1.getProgress(userId, course.id)];
             case 3:
+                progress = _a.sent();
+                course["progress"] = progress;
+                _a.label = 4;
+            case 4:
+                _i++;
+                return [3 /*break*/, 2];
+            case 5:
+                completedCourses = courses.filter(function (course) { return course.progress === 100; });
+                coursesInProgress = courses.filter(function (course) { var _a; return ((_a = course.progress) !== null && _a !== void 0 ? _a : 0) < 100; });
+                return [2 /*return*/, {
+                        completedCourses: completedCourses,
+                        coursesInProgress: coursesInProgress
+                    }];
+            case 6:
                 error_1 = _a.sent();
-                console.log("[GET_PROGRESS]", error_1);
-                return [2 /*return*/, 0];
-            case 4: return [2 /*return*/];
+                console.log("[GET_DASHBOARD_COURSES]", error_1);
+                return [2 /*return*/, {
+                        completedCourses: [],
+                        coursesInProgress: []
+                    }];
+            case 7: return [2 /*return*/];
         }
     });
 }); };
